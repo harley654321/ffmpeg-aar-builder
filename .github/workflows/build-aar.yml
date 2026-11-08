@@ -58,7 +58,8 @@ jobs:
           echo "ANDROID_NDK_ROOT=$SDK_ROOT/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           sudo apt-get update -y
-          sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf meson ninja-build
+          sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf \
+            meson ninja-build groff gettext autopoint bison flex texinfo gawk python3-setuptools
           df -h / | tail -1
 
       - name: Compilar
