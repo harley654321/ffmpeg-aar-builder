@@ -43,8 +43,11 @@ jobs:
             flags: ""
             archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
           - nombre: full-gpl
-            flags: "--enable-gpl --enable-lib-all"
+            flags: "--enable-gpl --enable-lib-x264 --enable-lib-x265 --enable-lib-libvpx --enable-lib-libaom --enable-lib-dav1d --enable-lib-libsvtav1 --enable-lib-opus --enable-lib-lame --enable-lib-libvorbis --enable-lib-libtheora --enable-lib-libass --enable-lib-freetype --enable-lib-fontconfig --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-zlib --enable-lib-srt --enable-lib-zimg --enable-lib-libwebp --enable-lib-libvidstab --enable-lib-openssl --enable-lib-libxml2 --enable-lib-snappy --enable-lib-libsamplerate --enable-lib-soxr"
             archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
+          - nombre: full-32-64
+            flags: "--enable-gpl --enable-lib-x264 --enable-lib-x265 --enable-lib-libvpx --enable-lib-libaom --enable-lib-dav1d --enable-lib-libsvtav1 --enable-lib-opus --enable-lib-lame --enable-lib-libvorbis --enable-lib-libtheora --enable-lib-libass --enable-lib-freetype --enable-lib-fontconfig --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-zlib --enable-lib-srt --enable-lib-zimg --enable-lib-libwebp --enable-lib-libvidstab --enable-lib-openssl --enable-lib-libxml2 --enable-lib-snappy --enable-lib-libsamplerate --enable-lib-soxr"
+            archs: "--disable-arch-x86 --disable-arch-x86-64"
     steps:
       - name: Liberar espacio en disco
         uses: jlumbroso/free-disk-space@main
@@ -126,11 +129,20 @@ jobs:
         env:
           RES: ${{ needs.build.result }}
         run: |
-          mkdir -p status
-          printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase -q origin main || true
+          git fetch -q origin main
+          git reset --hard -q origin/main
+          mkdir -p status
+          printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
           git add status/latest.json
-          git commit -m "estado: $RES [skip ci]" || exit 0
-          git push || (git pull --rebase -q origin main && git push)
+          git commit -m "estado: $RES [skip ci]" || true
+          for i in 1 2 3 4; do
+            git push && break
+            git fetch -q origin main
+            git reset --hard -q origin/main
+            printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
+            git add status/latest.json
+            git commit -m "estado: $RES [skip ci]" || true
+            sleep 3
+          done
