@@ -83,7 +83,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf \
             meson ninja-build cmake autogen groff gettext autopoint bison flex texinfo gawk python3-setuptools \
-            gtk-doc-tools libglib2.0-dev libxml2-dev
+            gtk-doc-tools libglib2.0-dev libxml2-dev libtasn1-bin libtasn1-6-dev
           df -h / | tail -1
 
       - name: Compilar
