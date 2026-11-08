@@ -64,7 +64,8 @@ jobs:
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           sudo apt-get update -y
           sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf \
-            meson ninja-build cmake autogen groff gettext autopoint bison flex texinfo gawk python3-setuptools
+            meson ninja-build cmake autogen groff gettext autopoint bison flex texinfo gawk python3-setuptools \
+            gtk-doc-tools libglib2.0-dev libxml2-dev
           df -h / | tail -1
 
       - name: Compilar
