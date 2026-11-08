@@ -46,15 +46,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: NDK r27d y herramientas
+      - name: SDK de Android, NDK r27d y herramientas
         run: |
-          sdkmanager --install "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0" "cmake;3.31.6"
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          CMDLINE="$SDK_ROOT/cmdline-tools/latest/bin"
+          if [ ! -x "$CMDLINE/sdkmanager" ]; then CMDLINE="$SDK_ROOT/cmdline-tools/16.0/bin"; fi
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$CMDLINE" >> "$GITHUB_PATH"
+          yes | "$CMDLINE/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$CMDLINE/sdkmanager" --install "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0" "cmake;3.31.6"
+          echo "ANDROID_NDK_ROOT=$SDK_ROOT/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           sudo apt-get update -y
-          sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf meson ninja-build python3 curl git
-          echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf meson ninja-build
           df -h / | tail -1
 
       - name: Compilar
