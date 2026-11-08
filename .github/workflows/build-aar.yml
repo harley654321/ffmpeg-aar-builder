@@ -130,6 +130,7 @@ jobs:
           printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase -q origin main || true
           git add status/latest.json
           git commit -m "estado: $RES [skip ci]" || exit 0
-          git push
+          git push || (git pull --rebase -q origin main && git push)
