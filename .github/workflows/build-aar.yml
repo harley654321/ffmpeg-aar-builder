@@ -24,8 +24,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mio=${{ github.run_id }}
           for i in 1 2 3 4; do
             git fetch -q origin main && git reset --hard -q origin/main
+            if [ -f status/latest.json ]; then
+              otro=$(sed -n 's/.*"run":"\([0-9]*\)".*/\1/p' status/latest.json)
+              if [ -n "$otro" ] && [ "$otro" -gt "$mio" ]; then
+                echo "Estado ya pertenece al run $otro (posterior). No se sobrescribe."
+                exit 0
+              fi
+            fi
             mkdir -p status
             printf '{"resultado":"en_curso","run":"%s","fecha":"%s"}\n' "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
             git add status/latest.json
@@ -135,8 +143,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mio=${{ github.run_id }}
           git fetch -q origin main
           git reset --hard -q origin/main
+          if [ -f status/latest.json ]; then
+            otro=$(sed -n 's/.*"run":"\([0-9]*\)".*/\1/p' status/latest.json)
+            if [ -n "$otro" ] && [ "$otro" -gt "$mio" ]; then
+              echo "Estado ya pertenece al run $otro (posterior). No se sobrescribe."
+              exit 0
+            fi
+          fi
           mkdir -p status
           printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
           git add status/latest.json
@@ -145,6 +161,10 @@ jobs:
             git push && break
             git fetch -q origin main
             git reset --hard -q origin/main
+            if [ -f status/latest.json ]; then
+              otro=$(sed -n 's/.*"run":"\([0-9]*\)".*/\1/p' status/latest.json)
+              if [ -n "$otro" ] && [ "$otro" -gt "$mio" ]; then exit 0; fi
+            fi
             printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
             git add status/latest.json
             git commit -m "estado: $RES [skip ci]" || true
