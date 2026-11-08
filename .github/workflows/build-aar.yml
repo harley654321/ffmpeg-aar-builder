@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'status/**'
+      - '**.md'
 
 env:
   NDK_VERSION: 27.3.13750724
@@ -24,9 +27,6 @@ jobs:
           - nombre: full-gpl
             flags: "--enable-gpl --enable-lib-all"
             archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
-          - nombre: full-gpl-32-64
-            flags: "--enable-gpl --enable-lib-all"
-            archs: "--disable-arch-x86 --disable-arch-x86-64"
     steps:
       - name: Liberar espacio en disco
         uses: jlumbroso/free-disk-space@main
@@ -73,7 +73,7 @@ jobs:
           chmod +x android.sh
           set -o pipefail
           ./android.sh ${{ matrix.flags }} ${{ matrix.archs }} \
-            --jobs=2 || { echo "----- build.log (cola) -----"; tail -n 250 build.log; exit 1; }
+            --jobs=4 || { echo "----- build.log (cola) -----"; tail -n 250 build.log; exit 1; }
 
       - name: Resultado del AAR
         if: always()
