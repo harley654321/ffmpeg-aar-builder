@@ -101,6 +101,28 @@ jobs:
             gtk-doc-tools libglib2.0-dev libxml2-dev libtasn1-bin libtasn1-6-dev
           df -h / | tail -1
 
+      - name: Predescargar Gradle
+        run: |
+          set -euo pipefail
+          props=$(find src -name gradle-wrapper.properties | head -1)
+          if [ -z "$props" ]; then echo "sin wrapper, nada que hacer"; exit 0; fi
+          url=$(grep '^distributionUrl=' "$props" | sed 's/^distributionUrl=//' | sed 's|\\:|:|g')
+          zip="/tmp/$(basename "$url")"
+          echo "Distribucion: $url"
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            if curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 -o "$zip" "$url"; then ok=1; break; fi
+            echo "reintento $i"; sleep 15
+          done
+          if [ "$ok" != "1" ]; then echo "no se pudo descargar gradle"; exit 1; fi
+          ls -la "$zip"
+          for f in $(find src -name gradle-wrapper.properties); do
+            sed -i "s|^distributionUrl=.*|distributionUrl=file\\://$zip|" "$f"
+            grep -q '^networkTimeout=' "$f" || echo 'networkTimeout=120000' >> "$f"
+            sed -i 's|^networkTimeout=.*|networkTimeout=120000|' "$f"
+          done
+          grep -h -E 'distributionUrl|networkTimeout' $(find src -name gradle-wrapper.properties) || true
+
       - name: Compilar
         run: |
           cd src
