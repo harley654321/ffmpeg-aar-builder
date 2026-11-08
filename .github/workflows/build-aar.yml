@@ -13,8 +13,26 @@ env:
   FFMPEG_KIT_TAG: v9.0.2
 
 jobs:
+  marca:
+    name: marca
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Marcar build en curso
+        run: |
+          mkdir -p status
+          printf '{"resultado":"en_curso","run":"%s","fecha":"%s"}\n' "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add status/latest.json
+          git commit -m "estado: en curso [skip ci]" || exit 0
+          git push
+
   build:
     name: ${{ matrix.nombre }}
+    needs: [marca]
     runs-on: ubuntu-latest
     timeout-minutes: 350
     strategy:
