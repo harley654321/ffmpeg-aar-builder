@@ -113,5 +113,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add status/latest.json
-          git commit -m "estado: $RES" || exit 0
+          git commit -m "estado: $RES [skip ci]" || exit 0
           git push
