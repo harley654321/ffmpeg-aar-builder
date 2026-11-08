@@ -51,12 +51,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - nombre: core
-            flags: ""
-            archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
-          - nombre: full-gpl
-            flags: "--enable-gpl --enable-lib-x264 --enable-lib-x265 --enable-lib-libvpx --enable-lib-libaom --enable-lib-dav1d --enable-lib-libsvtav1 --enable-lib-opus --enable-lib-lame --enable-lib-libvorbis --enable-lib-libtheora --enable-lib-libass --enable-lib-freetype --enable-lib-fontconfig --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-srt --enable-lib-zimg --enable-lib-libwebp --enable-lib-libvidstab --enable-lib-openssl --enable-lib-libxml2"
-            archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
           - nombre: full-32-64
             flags: "--enable-gpl --enable-lib-x264 --enable-lib-x265 --enable-lib-libvpx --enable-lib-libaom --enable-lib-dav1d --enable-lib-libsvtav1 --enable-lib-opus --enable-lib-lame --enable-lib-libvorbis --enable-lib-libtheora --enable-lib-libass --enable-lib-freetype --enable-lib-fontconfig --enable-lib-fribidi --enable-lib-harfbuzz --enable-lib-srt --enable-lib-zimg --enable-lib-libwebp --enable-lib-libvidstab --enable-lib-openssl --enable-lib-libxml2"
             archs: "--disable-arch-x86 --disable-arch-x86-64"
@@ -122,14 +116,36 @@ jobs:
             sed -i 's|^networkTimeout=.*|networkTimeout=120000|' "$f"
           done
           grep -h -E 'distributionUrl|networkTimeout' $(find src -name gradle-wrapper.properties) || true
+          # Reintentos de red: Maven Central redirige a GitHub y a veces devuelve 504
+          GP=src/gradle.properties
+          touch "$GP"
+          for kv in \
+            "systemProp.org.gradle.internal.repository.max.retries=10" \
+            "systemProp.org.gradle.internal.repository.initial.backoff=2000" \
+            "systemProp.org.gradle.internal.http.connectionTimeout=120000" \
+            "systemProp.org.gradle.internal.http.socketTimeout=180000"; do
+            k="${kv%%=*}"
+            grep -q "^${k}=" "$GP" || echo "$kv" >> "$GP"
+          done
+          cat "$GP" || true
 
       - name: Compilar
         run: |
           cd src
           chmod +x android.sh
           set -o pipefail
-          ./android.sh ${{ matrix.flags }} ${{ matrix.archs }} \
-            --jobs=4 || { echo "----- build.log (cola) -----"; tail -n 250 build.log; exit 1; }
+          ok=0
+          for intento in 1 2 3; do
+            echo "== intento $intento =="
+            if ./android.sh ${{ matrix.flags }} ${{ matrix.archs }} --jobs=4; then ok=1; break; fi
+            echo "----- build.log (cola) -----"; tail -n 120 build.log || true
+            if grep -qiE "504|Gateway Time-out|Could not download|Connection reset|timed out|Read timed out" build.log; then
+              echo "Fallo de red, se reintenta en 30s"; sleep 30
+            else
+              echo "Fallo no relacionado con red, se detiene"; exit 1
+            fi
+          done
+          if [ "$ok" != "1" ]; then echo "el build fallo tras 3 intentos"; exit 1; fi
 
       - name: Resultado del AAR
         if: always()
