@@ -93,3 +93,24 @@ jobs:
             src/build.log
           if-no-files-found: warn
           retention-days: 30
+
+  estado:
+    name: estado
+    needs: [build]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publicar estado del build
+        env:
+          RES: ${{ needs.build.result }}
+        run: |
+          mkdir -p status
+          printf '{"resultado":"%s","run":"%s","fecha":"%s"}\n' "$RES" "${{ github.run_id }}" "$(date -u +%FT%TZ)" > status/latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add status/latest.json
+          git commit -m "estado: $RES" || exit 0
+          git push
