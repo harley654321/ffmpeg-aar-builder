@@ -20,8 +20,13 @@ jobs:
         include:
           - nombre: core
             flags: ""
+            archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
           - nombre: full-gpl
             flags: "--enable-gpl --enable-lib-all"
+            archs: "--disable-arch-arm-v7a --disable-arch-arm-v7a-neon --disable-arch-x86 --disable-arch-x86-64"
+          - nombre: full-gpl-32-64
+            flags: "--enable-gpl --enable-lib-all"
+            archs: "--disable-arch-x86 --disable-arch-x86-64"
     steps:
       - name: Liberar espacio en disco
         uses: jlumbroso/free-disk-space@main
@@ -59,7 +64,7 @@ jobs:
           echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
           sudo apt-get update -y
           sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf \
-            meson ninja-build groff gettext autopoint bison flex texinfo gawk python3-setuptools
+            meson ninja-build cmake autogen groff gettext autopoint bison flex texinfo gawk python3-setuptools
           df -h / | tail -1
 
       - name: Compilar
@@ -67,11 +72,7 @@ jobs:
           cd src
           chmod +x android.sh
           set -o pipefail
-          ./android.sh ${{ matrix.flags }} \
-            --disable-arch-arm-v7a \
-            --disable-arch-arm-v7a-neon \
-            --disable-arch-x86 \
-            --disable-arch-x86-64 \
+          ./android.sh ${{ matrix.flags }} ${{ matrix.archs }} \
             --jobs=2 || { echo "----- build.log (cola) -----"; tail -n 250 build.log; exit 1; }
 
       - name: Resultado del AAR
@@ -88,7 +89,7 @@ jobs:
           name: aar-${{ matrix.nombre }}
           path: |
             src/prebuilt/bundle-android-aar-*/
-            src/prebuilt/android-arm64-*/
+            src/prebuilt/android-*/
             src/build.log
           if-no-files-found: warn
           retention-days: 30
