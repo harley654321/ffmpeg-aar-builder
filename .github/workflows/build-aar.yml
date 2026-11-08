@@ -1,0 +1,89 @@
+name: FFmpeg AAR arm64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  NDK_VERSION: 27.3.13750724
+  FFMPEG_KIT_TAG: v9.0.2
+
+jobs:
+  build:
+    name: ${{ matrix.nombre }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: core
+            flags: ""
+          - nombre: full-gpl
+            flags: "--enable-gpl --enable-lib-all"
+    steps:
+      - name: Liberar espacio en disco
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+
+      - name: Código de ffmpeg-kit-next
+        uses: actions/checkout@v4
+        with:
+          repository: arthenica/ffmpeg-kit-next
+          ref: ${{ env.FFMPEG_KIT_TAG }}
+          path: src
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: NDK r27d y herramientas
+        run: |
+          sdkmanager --install "ndk;${NDK_VERSION}" "platforms;android-35" "build-tools;35.0.0" "cmake;3.31.6"
+          sudo apt-get update -y
+          sudo apt-get install -y autoconf automake libtool libtool-bin pkg-config nasm gperf meson ninja-build python3 curl git
+          echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          df -h / | tail -1
+
+      - name: Compilar
+        run: |
+          cd src
+          chmod +x android.sh
+          set -o pipefail
+          ./android.sh ${{ matrix.flags }} \
+            --disable-arch-arm-v7a \
+            --disable-arch-arm-v7a-neon \
+            --disable-arch-x86 \
+            --disable-arch-x86-64 \
+            --jobs 2 || { echo "----- build.log (cola) -----"; tail -n 250 build.log; exit 1; }
+
+      - name: Resultado del AAR
+        if: always()
+        run: |
+          echo "### Buscando AAR (${{ matrix.nombre }})" >> $GITHUB_STEP_SUMMARY
+          find src/prebuilt -maxdepth 3 \( -name "*.aar" -o -name "*.zip" \) | head -20 >> $GITHUB_STEP_SUMMARY || true
+          du -sh src/prebuilt/* 2>/dev/null | head -20 >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Subir artefactos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aar-${{ matrix.nombre }}
+          path: |
+            src/prebuilt/bundle-android-aar-*/
+            src/prebuilt/android-arm64-*/
+            src/build.log
+          if-no-files-found: warn
+          retention-days: 30
